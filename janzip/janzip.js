@@ -3,8 +3,14 @@
  * 
  * (c) Jan Jongboom, 2011
  */
+ // modified by Bruno Jouhier for async compress
+ "use strict";
+if (!require('streamline/module')(module)) return;
+var flows = require('streamline/lib/util/flows');
+
 var RollingBuffer = require("./rollingbuffer");
-var fs = require("./throttlefs");
+var fs = require("fs");
+var zlib = require("zlib");
  
 var Zip = function () {
     var _self = this;
@@ -54,7 +60,7 @@ var Zip = function () {
          * Generate a file header (as a buffer)
          */
         function getFileHeader (file, compressIndicator, compressedData) {
-            var dt = getDateTimeHeaders(new Date());
+            var dt = getDateTimeHeaders(file.date || new Date());
             
             var header = new RollingBuffer(26);
             
@@ -66,7 +72,7 @@ var Zip = function () {
             header.writeInt16(dt.time);
             header.writeInt16(dt.date);
             // crc32
-            header.writeInt32(crc32(compressedData));
+            header.writeInt32(crc32(file.data));
             // compressed size
             header.writeInt32(compressedData.length);
             // uncompressed size
@@ -92,52 +98,28 @@ var Zip = function () {
          * Add multiple files to the current archive.
          * Pass in an array containing { name: "", path: "" }
          */
-        function addFiles (filenames, callback) {
-            var counter = 0;
-            
-            var fileErr = null;
-            var onFileRead = function (err) {
-                if (err) fileErr = err;
-                
-                if (++counter === filenames.length) {
-                    clearTimeout(expirationTimer);
-                    return callback && callback(fileErr);
-                }
-            };
-            
-            if (!filenames.length) {
-                return callback && callback(fileErr);
-            }
-            
+        function addFiles (filenames) {
             filenames.forEach(function (f) {
-                fs.readFile(f.path, function (err, data) {
-                    if (err) {
-                        return onFileRead(err);
-                    }
-                    else {
-                        add (f.name, data);
-                        onFileRead();
-                    }
-                });
+                files.push(f);
             });
-            
-            // there is a 1 minute expiration timer running
-            var expirationTimer = setTimeout(function () {
-                return callback && callback("Timeout reached when adding files");
-            }, 60 * 1000);
         }
         
         /**
          * Returns the ZIP archive as a buffer object
          */
-        function toBuffer (zipMethod) {
+        function toBuffer (zipMethod, _) {
             zipMethod = zipMethod || store;
             
             var fileBuffers = [], dirBuffers = [];
             var fileOffset = 0;
             
-            files.map(function(file) {
-                var data = zipMethod.compress(file.data);
+            flows.each(_, files, function(_, file) {
+                var noData = !file.data;
+                if (noData)
+                    file.data = fs.readFile(file.path, _);
+                if (!file.date)
+                    file.date = fs.stat(file.path, _).mtime;
+                var data = zipMethod.compress(file.data, _);
                 var fileHeader = getFileHeader(file, zipMethod.indicator, data);
                             
                 // write files
@@ -166,6 +148,7 @@ var Zip = function () {
             
                 fileBuffers.push(fileBuffer);
                 dirBuffers.push(dirBuffer);
+                if (noData) delete file.data;
             });
             
             var totalDirLength = getTotalBufLength(dirBuffers);
@@ -203,17 +186,22 @@ var Zip = function () {
     Object.keys(exp).forEach(function (k) { _self[k] = exp[k]; });
 };
 
-module.exports = Zip;
+exports.Zip = Zip;
 
 // ====== Default zipping method ======
-var store = (function () {
-   return {
-       indicator : [ 0x00, 0x00 ],
-       compress : function (content) {
-          return content;
-       }
-   };
-}());
+exports.store = {
+    indicator : [ 0x00, 0x00 ],
+    compress : function (content, _) {
+        return content;
+    }
+};
+
+exports.deflate = {
+    indicator: [ 0x08, 0x00 ],
+    compress : function (content, _) {
+        return zlib.deflateRaw(content, _);
+    }
+};
 
 // ====== Helper functions ======
 function crc32 (buf) {
