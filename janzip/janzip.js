@@ -2,19 +2,27 @@
  * node.js zipping module
  *
  * (c) Jan Jongboom, 2011
+ * 
+ * Modified by Bruno Jouhier to support compression and streaming.
  */
-// modified by Bruno Jouhier for async compress
 "use strict";
 if (!require('streamline/module')(module)) return;
 var flows = require('streamline/lib/util/flows');
+var streams = require('streamline/lib/streams/server/streams');
 
 var RollingBuffer = require("./rollingbuffer");
 var fs = require("fs");
 var zlib = require("zlib");
 
-var Zip = function() {
-        var files = [];
+var Zip = function(outStream, options) {
+        // auto-wrap outStream with streamline stream
+        var os = outStream.emitter ? outStream : new streams.WritableStream(outStream);
+        options = options || {};
+        var zipMethod = options.zipMethod || exports.deflate;
 
+        var dirBuffers = [];
+        var fileOffset = 0;
+        var totalDirLength = 0;
         /**
          * Get the date / time parts of the file header
          * @param {date} A date object
@@ -85,82 +93,112 @@ var Zip = function() {
             return header;
         }
 
+        function add(_, file) {
+            // compress
+            var data = zipMethod.compress(file.data, _);
+
+            // write file header
+            var fileHeader = getFileHeader(file, zipMethod.indicator, data);
+            var fileBuffer = new RollingBuffer(4 + fileHeader.length + file.name.length);
+            writeBytes(fileBuffer, [0x50, 0x4b, 0x03, 0x04]); // 4
+            fileBuffer.appendBuffer(fileHeader); // hmm...
+            fileBuffer.write(file.name, "ascii");
+            os.write(_, fileBuffer.buf);
+
+            // write file data
+            os.write(_, data);
+
+            // now create dir
+            var dirBuffer = new RollingBuffer(4 + 2 + fileHeader.length + 6 + 4 + 4 + file.name.length);
+            writeBytes(dirBuffer, [0x50, 0x4b, 0x01, 0x02]);
+            writeBytes(dirBuffer, [0x14, 0x00]);
+            dirBuffer.appendBuffer(fileHeader);
+            // comment length, disk start, file attributes
+            writeBytes(dirBuffer, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+            // external file attributes, @todo
+            writeBytes(dirBuffer, [0x00, 0x00, 0x00, 0x00]);
+            // relative offset of local header
+            dirBuffer.writeInt32(fileOffset);
+            // file name
+            dirBuffer.write(file.name, "ascii");
+            dirBuffers.push(dirBuffer.buf);
+            totalDirLength += dirBuffer.buf.length;
+
+            // update offset
+            fileOffset += fileBuffer.buf.length + data.length;
+        }
         /**
          * Add a file to the current file
          * @param {name} The name of the file (can include folder structure)
          * @param {data} A buffer containing the data
          */
-        this.add = function(filename, data) {
-            files.push({
+        this.addData = function(_, filename, data) {
+            add(_, {
                 name: filename,
-                data: data
+                data: data,
+                date: new Date()
             });
+            return this;
+        }
+
+        /**
+         * Add one file
+         * Pass in an antry containing { name: "", path: "" }
+         */
+        this.addFile = function(_, entry) {
+            add(_, {
+                name: entry.name,
+                data: fs.readFile(entry.path, _),
+                date: entry.date || fs.stat(entry.path, _).mtime
+            })
+            return this;
         }
 
         /**
          * Add multiple files to the current archive.
          * Pass in an array containing { name: "", path: "" }
          */
-        this.addFiles = function(filenames) {
-            filenames.forEach(function(f) {
-                files.push(f);
-            });
+        this.addFiles = function(_, entries) {
+            flows.each(_, entries, this.addFile.bind(this))
+            return this;
         }
 
         /**
-         * Returns the ZIP archive as a buffer object
+         * Add directory and all its contents
+         * entry contains { name: "", path: "", filter: optional function }
          */
-        this.toBuffer = function(zipMethod, _) {
-            zipMethod = zipMethod || store;
+        this.addDirectory = function(_, entry) {
+            var stat = fs.stat(entry.path, _);
+            if (stat.isDirectory()) {
+                flows.each(_, fs.readdir(entry.path, _), function(_, n) {
+                    if (entry.filter && !entry.filter(n, entry)) return;
+                    this.addDirectory(_, {
+                        name: entry.name ? entry.name + "/" + n : n,
+                        path: entry.path + "/" + n,
+                        filter: entry.filter
+                    });
+                }, this);
+            } else {
+                this.addFile(_, entry);
+            }
+            return this;
+        }
 
-            var fileBuffers = [],
-                dirBuffers = [];
-            var fileOffset = 0;
+        /**
+         * Finishes the stream
+         */
+        this.finish = function(_) {
+            var totalFileLength = fileOffset;
 
-            flows.each(_, files, function(_, file) {
-                var noData = !file.data;
-                if (noData) file.data = fs.readFile(file.path, _);
-                if (!file.date) file.date = fs.stat(file.path, _).mtime;
-                var data = zipMethod.compress(file.data, _);
-                var fileHeader = getFileHeader(file, zipMethod.indicator, data);
-
-                // write files
-                var fileBuffer = new RollingBuffer(4 + fileHeader.length + file.name.length + data.length);
-                writeBytes(fileBuffer, [0x50, 0x4b, 0x03, 0x04]); // 4
-                fileBuffer.appendBuffer(fileHeader); // hmm...
-                fileBuffer.write(file.name, "ascii");
-                fileBuffer.appendBuffer(data);
-
-                // now create dir
-                var dirBuffer = new RollingBuffer(4 + 2 + fileHeader.length + 6 + 4 + 4 + file.name.length);
-                writeBytes(dirBuffer, [0x50, 0x4b, 0x01, 0x02]);
-                writeBytes(dirBuffer, [0x14, 0x00]);
-                dirBuffer.appendBuffer(fileHeader);
-                // comment length, disk start, file attributes
-                writeBytes(dirBuffer, [0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
-                // external file attributes, @todo
-                writeBytes(dirBuffer, [0x00, 0x00, 0x00, 0x00]);
-                // relative offset of local header
-                dirBuffer.writeInt32(fileOffset);
-                // file name
-                dirBuffer.write(file.name, "ascii");
-
-                // update offset
-                fileOffset += fileBuffer.length;
-
-                fileBuffers.push(fileBuffer);
-                dirBuffers.push(dirBuffer);
-                if (noData) delete file.data;
+            flows.each(_, dirBuffers, function(_, b) {
+                os.write(_, b);
             });
-
-            var totalDirLength = getTotalBufLength(dirBuffers);
-            var totalFileLength = getTotalBufLength(fileBuffers);
 
             var dirEnd = new RollingBuffer(8 + 2 + 2 + 4 + 4 + 2);
             writeBytes(dirEnd, [0x50, 0x4b, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00]);
             // total number of entries
-            dirEnd.writeInt16(fileBuffers.length);
-            dirEnd.writeInt16(fileBuffers.length);
+            dirEnd.writeInt16(dirBuffers.length);
+            dirEnd.writeInt16(dirBuffers.length);
             // directory lengths
             dirEnd.writeInt32(totalDirLength);
             // file lengths
@@ -168,16 +206,11 @@ var Zip = function() {
             // and the end of file
             writeBytes(dirEnd, [0x00, 0x00]);
 
-            var buffer = new RollingBuffer(totalFileLength + totalDirLength + dirEnd.length);
-            fileBuffers.forEach(function(b) {
-                buffer.appendBuffer(b);
-            });
-            dirBuffers.forEach(function(b) {
-                buffer.appendBuffer(b);
-            });
-            buffer.appendBuffer(dirEnd);
-
-            return buffer.getInternalBuffer();
+            os.write(_, dirEnd.buf);
+            // auto-close if wrapped automatically
+            if (os !== outStream)
+                os.close(_); 
+            return this;
         }
     };
 
