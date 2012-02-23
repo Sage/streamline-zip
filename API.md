@@ -7,6 +7,10 @@ Simple API to create a zip archive. No external dependencies (except streamline.
   Creates a zip archive.  
   Uses _deflate_ compression by default. You can override this by passing  
   `options = { zipMethod: zip.store }`
+  ** `options.filter` optional function to filter the contents of directories.  
+  Called as `filter(_, filename, parentEntry)`. 
+  ** `options.transform` optional function to transform the contents of files.  
+  Called as `transform(_, contents, entry)` where `contents` is a buffer (not a string).
 
 * `archive.add(_, entry)`  
   Adds an entry to the archive.  
@@ -15,8 +19,6 @@ Simple API to create a zip archive. No external dependencies (except streamline.
   If the entry is `{ name: "...", data: "..." }`,
   the `data` buffer is added to the archive.  
   You may also specify a `date` in the entry.  
-  If you pass a directory `path`, you can also pass a `filter` function in the entry.  
-  The `filter` function will be called as `filter(filename, parentEntry)`.  
   You can also pass an array of entries instead of a single entry.  
   Returns `this` for chaining
 

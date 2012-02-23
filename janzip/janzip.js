@@ -24,6 +24,10 @@ var zlib = require("zlib");
 ///   Creates a zip archive.  
 ///   Uses _deflate_ compression by default. You can override this by passing  
 ///   `options = { zipMethod: zip.store }`
+///   ** `options.filter` optional function to filter the contents of directories.  
+///   Called as `filter(_, filename, parentEntry)`. 
+///   ** `options.transform` optional function to transform the contents of files.  
+///   Called as `transform(_, contents, entry)` where `contents` is a buffer (not a string).
 /// 
 exports.Zip = function(outStream, options) {
         // auto-wrap outStream with streamline stream
@@ -124,8 +128,6 @@ exports.Zip = function(outStream, options) {
         ///   If the entry is `{ name: "...", data: "..." }`,
         ///   the `data` buffer is added to the archive.  
         ///   You may also specify a `date` in the entry.  
-        ///   If you pass a directory `path`, you can also pass a `filter` function in the entry.  
-        ///   The `filter` function will be called as `filter(filename, parentEntry)`.  
         ///   You can also pass an array of entries instead of a single entry.  
         ///   Returns `this` for chaining
         /// 
@@ -137,17 +139,18 @@ exports.Zip = function(outStream, options) {
                     var stat = fs.stat(entry.path, _);
                     if (stat.isDirectory()) {
                         flows.each(_, fs.readdir(entry.path, _), function(_, n) {
-                            if (entry.filter && !entry.filter(n, entry)) return;
+                            if (options.filter && !options.filter(_, n, entry)) return;
                             this.add(_, {
                                 name: entry.name ? entry.name + "/" + n : n,
                                 path: entry.path + "/" + n,
-                                filter: entry.filter
                             });
                         }, this);
                     } else {
+                        var data = fs.readFile(entry.path, _);
+                        if (options.transform) data = options.transform(_, data, entry);
                         add(_, {
                             name: entry.name,
-                            data: fs.readFile(entry.path, _),
+                            data: data,
                             date: entry.date || fs.stat(entry.path, _).mtime
                         })
                     }
