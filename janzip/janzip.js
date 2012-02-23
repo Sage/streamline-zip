@@ -126,7 +126,7 @@ exports.Zip = function(outStream, options) {
         ///   You may also specify a `date` in the entry.  
         ///   If you pass a directory `path`, you can also pass a `filter` function in the entry.  
         ///   The `filter` function will be called as `filter(filename, parentEntry)`.  
-        ///   You can also pass an array of entries instead of a single entry.
+        ///   You can also pass an array of entries instead of a single entry.  
         ///   Returns `this` for chaining
         /// 
         this.add = function(_, entry) {
@@ -162,8 +162,8 @@ exports.Zip = function(outStream, options) {
             return this;
         }
 
-        /// * `archive.finish(_)`
-        ///   Writes the trailer at the end of the archive.
+        /// * `archive.finish(_)`  
+        ///   Writes the trailer at the end of the archive.  
         ///   Returns `this` for chaining.
         /// 
         this.finish = function(_) {
