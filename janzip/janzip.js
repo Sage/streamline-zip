@@ -18,12 +18,13 @@ var zlib = require("zlib");
 /// 
 /// # node-native-zip module
 /// 
-/// Simple API to create a zip archive. No extenal dependencies (except streamline.js)
+/// Simple API to create a zip archive. No external dependencies (except streamline.js).
 /// 
-/// * `archive = new zip.Zip(outStream, options)`  
+/// * `archive = new zip.Zip(outStream[, options])`  
 ///   Creates a zip archive.  
 ///   Uses _deflate_ compression by default. You can override this by passing  
-///   options = { zipMethod: zip.store }
+///   `options = { zipMethod: zip.store }`
+/// 
 exports.Zip = function(outStream, options) {
         // auto-wrap outStream with streamline stream
         var os = outStream.emitter ? outStream : new streams.WritableStream(outStream);
@@ -126,8 +127,8 @@ exports.Zip = function(outStream, options) {
         ///   If you pass a directory `path`, you can also pass a `filter` function in the entry.  
         ///   The `filter` function will be called as `filter(filename, parentEntry)`.  
         ///   You can also pass an array of entries instead of a single entry.
-        ///   
         ///   Returns `this` for chaining
+        /// 
         this.add = function(_, entry) {
             if (Array.isArray(entry)) {
                 flows.each(_, entry, this.add.bind(this));
@@ -164,6 +165,7 @@ exports.Zip = function(outStream, options) {
         /// * `archive.finish(_)`
         ///   Writes the trailer at the end of the archive.
         ///   Returns `this` for chaining.
+        /// 
         this.finish = function(_) {
             var totalFileLength = fileOffset;
 
@@ -192,6 +194,7 @@ exports.Zip = function(outStream, options) {
 
 /// * `zipMethod: zip.store`  
 ///   _store_ method (no compression)
+/// 
 exports.store = {
     indicator: [0x00, 0x00],
     compress: function(content, _) {
@@ -201,6 +204,7 @@ exports.store = {
 
 /// * `zipMethod: zip.deflate`  
 ///   _deflate_ method (standard compression)
+/// 
 exports.deflate = {
     indicator: [0x08, 0x00],
     compress: function(content, _) {
