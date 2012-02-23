@@ -6,12 +6,10 @@ Simple API to create a zip archive. No external dependencies (except streamline.
 * `archive = new zip.Zip(outStream[, options])`  
   Creates a zip archive.  
   Uses _deflate_ compression by default. You can override this by passing  
-  `options = { zipMethod: zip.store }`
-
-  ** `options.filter` optional function to filter the contents of directories.  
-  Called as `filter(_, filename, parentEntry)`. 
-
-  ** `options.transform` optional function to transform the contents of files.  
+  `options = { zipMethod: zip.store }`  
+  `options.filter`:  optional function to filter the contents of directories.  
+  Called as `filter(_, filename, parentEntry)`.  
+  `options.transform`:  optional function to transform the contents of files.  
   Called as `transform(_, contents, entry)` where `contents` is a buffer (not a string).
 
 * `archive.add(_, entry)`  
