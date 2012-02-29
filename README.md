@@ -1,5 +1,8 @@
 # node-native-zip
 
+Warning: This readme is not up-to-date. Some of the APIs have changed from sync to async. 
+Please be patient (or dig into the code) ...
+
 All the current ZIP solutions for node.js are wrappers around existing zip executables, spawning on demand.
 To all of you who rather have a native implementation of zip'ing in javascript there is node-native-zip.
 This package works with `Buffer` objects, which allows you to do complex in-memory stuff with the least
