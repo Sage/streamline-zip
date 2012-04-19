@@ -7,7 +7,6 @@
  */
 "use strict";
 if (!require('streamline/module')(module)) return;
-var flows = require('streamline/lib/util/flows');
 var streams = require('streamline/lib/streams/server/streams');
 
 var RollingBuffer = require("./rollingbuffer");
@@ -133,12 +132,12 @@ exports.Zip = function(outStream, options) {
         /// 
         this.add = function(_, entry) {
             if (Array.isArray(entry)) {
-                flows.each(_, entry, this.add.bind(this));
+                entry.forEach_(_, this.add.bind(this));
             } else {
                 if (entry.data == null) {
                     var stat = fs.stat(entry.path, _);
                     if (stat.isDirectory()) {
-                        flows.each(_, fs.readdir(entry.path, _), function(_, n) {
+                        fs.readdir(entry.path, _).forEach_(_, function(_, n) {
                             if (options.filter && !options.filter(_, n, entry)) return;
                             this.add(_, {
                                 name: entry.name ? entry.name + "/" + n : n,
@@ -172,7 +171,7 @@ exports.Zip = function(outStream, options) {
         this.finish = function(_) {
             var totalFileLength = fileOffset;
 
-            flows.each(_, dirBuffers, function(_, b) {
+            dirBuffers.forEach_(_, function(_, b) {
                 os.write(_, b);
             });
 
