@@ -6,7 +6,6 @@
  * Modified by Bruno Jouhier to support compression and streaming.
  */
 "use strict";
-if (!require('streamline/module')(module)) return;
 var streams = require('streamline/lib/streams/server/streams');
 
 var RollingBuffer = require("./rollingbuffer");
