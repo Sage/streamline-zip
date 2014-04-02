@@ -1,96 +1,48 @@
-# node-native-zip
+# streamline-zip
 
-Warning: This readme is not up-to-date. Some of the APIs have changed from sync to async. 
-Please be patient (or dig into the code) ...
-
-All the current ZIP solutions for node.js are wrappers around existing zip executables, spawning on demand.
-To all of you who rather have a native implementation of zip'ing in javascript there is node-native-zip.
-This package works with `Buffer` objects, which allows you to do complex in-memory stuff with the least
-amount of overhead.
-
-It has been inspired by [JSZip](https://github.com/Stuk/jszip).
+This module is a modification of the zip creation module by Jan Jongboom, 2011 [janzip](https://www.github.com/janjongboom/node-native-zip) for use with Streamline.
 
 ## How to install
 
-Via NPM:
-
-    npm install node-native-zip
-    
 Via GIT:
 
-    git clone git://github.com/janjongboom/node-native-zip.git
+    git clone https://github.com/Sage/streamline-zip.git
     
 ## How to use
 
-There are two ways to feed files into a new .zip file. Either by adding `Buffer` objects, or by adding
-an array of files.
+This library requires that [streamline](https://github.com/Sage/streamlinejs) is available to simplify asynchronous function calls and requires [streamline-fs](https://github.com/Sage/streamline-fs)
 
-### Adding Buffer objects
+You need a writable stream to which the zip content will be written, e. g. when you want to write to a file `foo.zip`, you get the stream via
 
-    var fs = require("fs");
-    var zip = require("node-native-zip");
-    
-    var archive = new zip();
-    
-    archive.add("hello.txt", new Buffer("Hello world", "utf8"));
-    
-    var buffer = archive.toBuffer();
-    fs.writeFile("./test1.zip", buffer, function () {
-        console.log("Finished");
-    });
-    
-### Adding files from the file system
+    var fs = require('fs');
+    var wstream = fs.createWriteStream('foo.zip');
 
-    var fs = require("fs");
-    var zip = require("node-native-zip");
-    
-    var archive = new zip();
-    
-    archive.addFiles([ 
-        { name: "moehah.txt", path: "./test/moehah.txt" },
-        { name: "images/suz.jpg", path: "./test/images.jpg" }
-    ], function (err) {
-        if (err) return console.log("err while adding files", err);
-        
-        var buff = archive.toBuffer();
-        
-        fs.writeFile("./test2.zip", buff, function () {
-            console.log("Finished");
-        });
-    });
-    
-## API Reference
+Now you create a zip object which will write to this stream
 
-There are three API methods:
+    var zip = require("streamline-zip");
+    var archive = new zip.Zip(wstream);
 
-* `add(name, data)`, the 'name' is the name within the .zip file. To create a folder structure, add '/'
-* `addFiles(files, callback)`, where files is an array containing objects in the form ` { name: "name/in/zip.file", path: "file-system.path" } `. Callback is a function that takes 1 parameter 'err' which indicates whether an error occured.
-* `toBuffer()`, creates a new buffer and writes the zip file to it
+There is an optional second parameter for an options object. In these options you may indicate the store method (either `zipMethod: zip.deflate`, which is the default, or `zipMethod: zip.store`),
+and provide an optional filter function for the contents of directories (`filter: filterFunction`; will be called as `filter(_, filename, parentEntry)`; must return true to take this entry), and a transform function (`transform: transformFunction`) to transform the contents of files before adding them to the archive; will be called as `transform(_, data, entry)`). 
 
-## Compression?
+Then you can populate the archive. The following `add` function takes either an object or an array of objects, where each object can have the following attributes:
 
-The library currently doesn't do any compression. It stores the files via STORE. Main reason is that the
-compression call is synchronous at the moment, so the thread will block during compression, something to
-avoid.
-However, it is possible to add compression methods by implementing the following interface.
+   * `name`: this is the name under which it will be stored in the zip archive (obligatory)
+   * `data`: buffer (not string!) with the contents or
+   * `path`: a file name or directory name in the file system (directories will be recursed, using an optional filter as described above; when a transform method is proveded, it will be applied to the file contents; will be used when no `data` provided; either `data` or `path` must be provided)
+   * `date`: an optional date (by default, the current time, when `data` is given, or the last modification time of the file, when a path is given)
 
-    module.exports = (function () {
-        return {
-            indicator : [ 0x00, 0x00 ],
-            compress : function (content) {
-                // content is a Buffer object.
-                // you have to return a new Buffer too.
-            }
-        };
-    }());
+Examples:
 
-The `indicator` is an array consisting of two bytes indicating the compression technology.
-For example: `[ 0x00, 0x00]` is STORE, `[ 0x08, 0x00]` is DEFLATE.
+    archive.add(_, { name: "test.txt", data: new Buffer(...), date: new Date("2014-04-02 10:00")};
+    archive.add(_, [{name: "test2.txt", path: "./foo.txt"}, {name: "test3", path: "some_directory"}]);
 
-The `compress` function is a method that transforms an incoming `Buffer` into a new one.
+It is safe to change above options between calls of the `add` method. 
+After adding all entries, you have to complete the archive (this method will append the trailer):
 
-The easiest to implement is probably deflate, because there is a [sample](https://github.com/Stuk/jszip/blob/master/jszip-deflate.js)
-in JSZip. You will only need to change the inner workings from string-based to Buffer-based.
+    archive.finish(_);
+
+This will also close the underlying stream by invoking its `end()` method. 
 
 ## Unzipping
 
