@@ -1,7 +1,9 @@
 
-# node-native-zip module
+# streamline-zip main module
 
 Simple API to create a zip archive. No external dependencies (except streamline.js).
+
+`var zip = require('streamline-zip')`
 
 * `archive = new zip.Zip(outStream[, options])`  
   Creates a zip archive.  
@@ -16,8 +18,8 @@ Simple API to create a zip archive. No external dependencies (except streamline.
   Adds an entry to the archive.  
   If the entry is `{ name: "...", path: "..." }`,
   the `path` file or directory (and all its contents) is added to the archive.  
-  If the entry is `{ name: "...", data: "..." }`,
-  the `data` buffer is added to the archive.  
+  If the entry is `{ name: "...", data: ... }`,
+  the `data` buffer (no string allowed!) is added to the archive.  
   You may also specify a `date` in the entry.  
   You can also pass an array of entries instead of a single entry.  
   Returns `this` for chaining

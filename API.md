@@ -1,6 +1,8 @@
-# node-native-zip
+# streamline-zip
 
 A ZIP library without external dependencies
 
 * [streamline-zip/janzip/janzip](janzip/janzip.md)  
-  node-native-zip module
+  streamline-zip main module
+* [streamline-zip/lib/unzip/unzip](lib/unzip/unzip.md)  
+  streamline-zip/lib/unzip/unzip module

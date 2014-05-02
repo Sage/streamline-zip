@@ -1,9 +1,9 @@
 {
-  "name": "node-native-zip",
-  "version": "1.0.1",
+  "name": "streamline-zip",
+  "version": "1.0.2",
   "description": "A ZIP library without external dependencies",
   "author": "Jan Jongboom <janjongboom@gmail.com>",
   "dependencies": { },
   "devDependencies": { },
-  "engine": "node >= 0.4.9"
+  "engine": "node >= 0.10.0"
 }
