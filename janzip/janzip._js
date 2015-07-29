@@ -60,13 +60,28 @@ exports.Zip = function(outStream, options) {
 		};
 	}
 
+	// return byte length as file name length
+	function getFileNameLength(fileName)
+	{
+		return Buffer.byteLength (fileName, "utf8");
+	}
+
 	function getFileHeader(file, compressIndicator, compressedData) {
+
 		var dt = getDateTimeHeaders(file.date || new Date());
 
 		var header = new RollingBuffer(26);
 
 		// version + bit flag
-		writeBytes(header, [0x0A, 0x00, 0x00, 0x00]);
+		if(getFileNameLength(file.name)!== file.name.length) {
+			//set utf as default encoding for file name
+			writeBytes(header, [0x0A, 0x00, 0x00, 0x08]);
+		}
+		else
+		{
+			writeBytes(header, [0x0A, 0x00, 0x00, 0x00]);
+		}
+
 		// compression method @todo multiple methods, this is STORE
 		writeBytes(header, compressIndicator);
 		// file time & date
@@ -79,9 +94,11 @@ exports.Zip = function(outStream, options) {
 		// uncompressed size
 		header.writeInt32(file.data.length);
 		// file name length
-		header.writeInt16(file.name.length);
+		header.writeInt16(getFileNameLength(file.name));
 		// fill
 		writeBytes(header, [0x00, 0x00]);
+
+		console.log(header);
 
 		return header;
 	}
@@ -92,17 +109,25 @@ exports.Zip = function(outStream, options) {
 
 		// write file header
 		var fileHeader = getFileHeader(file, zipMethod.indicator, data);
-		var fileBuffer = new RollingBuffer(4 + fileHeader.length + file.name.length);
+		var fileBuffer = new RollingBuffer(4 + fileHeader.length + getFileNameLength(file.name));
 		writeBytes(fileBuffer, [0x50, 0x4b, 0x03, 0x04]); // 4
 		fileBuffer.appendBuffer(fileHeader); // hmm...
-		fileBuffer.write(file.name, "ascii");
+
+		if(getFileNameLength(file.name)!== file.name.length) {
+			fileBuffer.write(file.name, "utf8");
+		}
+		else
+		{
+			fileBuffer.write(file.name, "ascii");
+		}
+
 		os.write(_, fileBuffer.buf);
 
 		// write file data
 		os.write(_, data);
 
 		// now create dir
-		var dirBuffer = new RollingBuffer(4 + 2 + fileHeader.length + 6 + 4 + 4 + file.name.length);
+		var dirBuffer = new RollingBuffer(4 + 2 + fileHeader.length + 6 + 4 + 4 + getFileNameLength(file.name));
 		writeBytes(dirBuffer, [0x50, 0x4b, 0x01, 0x02]);
 		writeBytes(dirBuffer, [0x14, 0x00]);
 		dirBuffer.appendBuffer(fileHeader);
@@ -112,8 +137,16 @@ exports.Zip = function(outStream, options) {
 		writeBytes(dirBuffer, [0x00, 0x00, 0x00, 0x00]);
 		// relative offset of local header
 		dirBuffer.writeInt32(fileOffset);
+
 		// file name
-		dirBuffer.write(file.name, "ascii");
+		if(getFileNameLength(file.name)!== file.name.length) {
+			dirBuffer.write(file.name, "utf8");
+		}
+		else
+		{
+			dirBuffer.write(file.name, "ascii");
+		}
+
 		dirBuffers.push(dirBuffer.buf);
 		totalDirLength += dirBuffer.buf.length;
 
