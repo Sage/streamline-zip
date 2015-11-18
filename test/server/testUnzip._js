@@ -1,9 +1,9 @@
 "use strict";
 
-var flows = require("streamline/lib/util/flows");
+var flows = require('streamline-runtime').flows;
 
-var fs = require('streamline-fs');
-var unzip = require("streamline-zip/lib/unzip/unzip");
+var fs = require('fs');
+var zip = require('../..');
 
 var filesToTest = [__dirname + "/data/test_deflate.zip",
 __dirname + "/data/test_store.zip"];
@@ -19,7 +19,7 @@ asyncTest("Unzip filecount", filesToTest.length * 3, function(_) {
 		var files = [];
 		var data = fs.readFile(file, _);
 
-		new unzip.Unzip(
+		new zip.Unzip(
 		data,
 
 		function(filename, filecontent, headers, _) {
@@ -43,7 +43,7 @@ asyncTest("Unzip filecount filter", filesToTest.length * 2, function(_) {
 	flows.each(_, filesToTest, function(_, file) {
 		var files = [];
 		var data = fs.readFile(file, _);
-		new unzip.Unzip(
+		new zip.Unzip(
 		data,
 
 		function(filename, filecontent, headers, _) {
@@ -68,7 +68,7 @@ asyncTest("Unzip filesize/content", filesToTest.length * 9, function(_) {
 		var files = [];
 		var size = [];
 		var data = fs.readFile(file, _);
-		new unzip.Unzip(
+		new zip.Unzip(
 		data,
 
 		function(filename, filecontent, headers, _) {

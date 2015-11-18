@@ -6,10 +6,10 @@
  * Modified by Bruno Jouhier to support compression and streaming.
  */
 "use strict";
-var streams = require('streamline/lib/streams/server/streams');
+var ez = require('ez-streams');
 
 var RollingBuffer = require("./rollingbuffer");
-var fs = require('streamline-fs');
+var fs = require('fs');
 var zlib = require("zlib");
 
 /// !doc
@@ -31,7 +31,7 @@ var zlib = require("zlib");
 /// 
 exports.Zip = function(outStream, options) {
 	// auto-wrap outStream with streamline stream
-	var os = outStream.emitter ? outStream : new streams.WritableStream(outStream);
+	var os = (outStream.pre || outStream.emitter) ? outStream : ez.devices.node.writer(outStream);
 	options = options || {};
 	var zipMethod = options.zipMethod || exports.deflate;
 
@@ -191,8 +191,9 @@ exports.Zip = function(outStream, options) {
 		writeBytes(dirEnd, [0x00, 0x00]);
 
 		os.write(_, dirEnd.buf);
+		os.write(_);
 		// auto-close if wrapped automatically
-		if (os !== outStream) os.close(_);
+		if (os !== outStream && os.close) os.close(_);
 		return this;
 	};
 };
@@ -213,7 +214,7 @@ exports.store = {
 exports.deflate = {
 	indicator: [0x08, 0x00],
 	compress: function(content, _) {
-		return zlib.deflateRaw(content, ~_);
+		return zlib.deflateRaw(content, _);
 	}
 };
 

@@ -1,9 +1,13 @@
 {
   "name": "streamline-zip",
-  "version": "1.0.2",
+  "version": "1.0.1",
   "description": "A ZIP library without external dependencies",
   "author": "Jan Jongboom <janjongboom@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Sage/streamline-zip.git"
+  },
   "dependencies": { },
   "devDependencies": { },
-  "engine": "node >= 0.10.0"
+  "engine": "node >= 0.4.9"
 }
