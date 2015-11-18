@@ -1,13 +1,31 @@
 {
   "name": "streamline-zip",
-  "version": "1.0.1",
-  "description": "A ZIP library without external dependencies",
-  "author": "Jan Jongboom <janjongboom@gmail.com>",
+  "version": "2.0.0",
+  "description": "Jan Jongboom's ZIP library adapted for streamline.js",
+  "author": {
+    "name": "Jan Jongboom <janjongboom@gmail.com>"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git://github.com/Sage/streamline-zip.git"
   },
-  "dependencies": { },
-  "devDependencies": { },
-  "engine": "node >= 0.4.9"
+  "bugs": {
+    "url": "https://github.com/Sage/streamline-zip/issues"
+  },
+  "engines": {
+    "node": ">=0.10.8"
+  },
+  "dependencies": {
+    "streamline-runtime": "^1.0.15"
+  },
+  "devDependencies": {
+    "babel-plugin-streamline": "^1.0.8",
+    "streamline-helpers": "^1.0.0"
+  },
+  "scripts": {
+    "prepublish": "node build.js || nodejs build.js"
+  },
+  "readmeFilename": "README.md",
+  "homepage": "https://github.com/Sage/streamline-zip#readme"
 }
