@@ -3,10 +3,11 @@
 var flows = require('streamline-runtime').flows;
 
 var fs = require('fs');
+var fsp = require('path');
 var zip = require('../..');
 
-var filesToTest = [__dirname + "/data/test_deflate.zip",
-__dirname + "/data/test_store.zip"];
+var filesToTest = [fsp.join(__dirname, "../../test/fixtures/test_deflate.zip"),
+fsp.join(__dirname, "../../test/fixtures/test_store.zip")];
 
 QUnit.module(module.id, {
 	setup: function() {},

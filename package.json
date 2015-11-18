@@ -17,6 +17,7 @@
     "node": ">=0.10.8"
   },
   "dependencies": {
+    "ez-streams": "^1.2.1",
     "streamline-runtime": "^1.0.15"
   },
   "devDependencies": {
@@ -24,7 +25,8 @@
     "streamline-helpers": "^1.0.0"
   },
   "scripts": {
-    "prepublish": "node build.js || nodejs build.js"
+    "prepublish": "node build.js || nodejs build.js",
+    "test": "node test-callbacks"
   },
   "readmeFilename": "README.md",
   "homepage": "https://github.com/Sage/streamline-zip#readme"
