@@ -1,6 +1,6 @@
 {
   "name": "streamline-zip",
-  "version": "3.0.1",
+  "version": "4.0.0",
   "description": "Jan Jongboom's ZIP library adapted for streamline.js",
   "author": {
     "name": "Jan Jongboom <janjongboom@gmail.com>"
